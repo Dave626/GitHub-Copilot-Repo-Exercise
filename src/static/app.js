@@ -24,8 +24,64 @@ document.addEventListener("DOMContentLoaded", () => {
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
-          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <p class="activity-availability"><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <div class="participants">
+            <h5>Participants</h5>
+            <ul class="participants-list"></ul>
+          </div>
         `;
+
+        const participantsList = activityCard.querySelector(".participants-list");
+        details.participants.forEach((email) => {
+          const participant = document.createElement("li");
+          const participantEmail = document.createElement("span");
+          participantEmail.textContent = email;
+
+          const removeButton = document.createElement("button");
+          removeButton.type = "button";
+          removeButton.className = "remove-participant";
+          removeButton.setAttribute("aria-label", `Unregister ${email}`);
+          removeButton.title = `Unregister ${email}`;
+          removeButton.innerHTML = `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 4v6m4-6v6" />
+            </svg>
+          `;
+
+          removeButton.addEventListener("click", async () => {
+            removeButton.disabled = true;
+            try {
+              const response = await fetch(
+                `/activities/${encodeURIComponent(name)}/signup?email=${encodeURIComponent(email)}`,
+                { method: "DELETE" }
+              );
+              const result = await response.json();
+
+              if (!response.ok) {
+                throw new Error(result.detail || "Unable to unregister participant");
+              }
+
+              details.participants = details.participants.filter(
+                (participantEmail) => participantEmail !== email
+              );
+              participant.remove();
+              activityCard.querySelector(".activity-availability").innerHTML =
+                `<strong>Availability:</strong> ${details.max_participants - details.participants.length} spots left`;
+              messageDiv.textContent = result.message;
+              messageDiv.className = "success";
+            } catch (error) {
+              messageDiv.textContent = error.message || "Failed to unregister participant";
+              messageDiv.className = "error";
+            }
+
+            messageDiv.classList.remove("hidden");
+            setTimeout(() => messageDiv.classList.add("hidden"), 5000);
+            removeButton.disabled = false;
+          });
+
+          participant.append(participantEmail, removeButton);
+          participantsList.appendChild(participant);
+        });
 
         activitiesList.appendChild(activityCard);
 
